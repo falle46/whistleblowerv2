@@ -3,7 +3,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Download, X } from "lucide-react"
+import { Download } from "lucide-react"
 import type { ReportData } from "@/lib/firebase-utils"
 import { useLanguage } from "@/contexts/language-context"
 import jsPDF from "jspdf"
@@ -115,6 +115,20 @@ export default function ReportDetailModal({ report, onClose }: ReportDetailModal
       doc.text(`Telepon: ${report.personalInfo.phone}`, margin, yPosition)
     }
 
+    // Attachments section to PDF
+    if (report.attachments && report.attachments.length > 0) {
+      doc.setFont("helvetica", "bold")
+      doc.text("LAMPIRAN", margin, yPosition)
+      yPosition += 10
+
+      doc.setFont("helvetica", "normal")
+      report.attachments.forEach((attachment, index) => {
+        doc.text(`${index + 1}. ${attachment.name} (${attachment.type})`, margin, yPosition)
+        yPosition += 8
+      })
+      yPosition += 10
+    }
+
     // Footer
     const footerY = doc.internal.pageSize.getHeight() - 20
     doc.setFontSize(8)
@@ -123,6 +137,16 @@ export default function ReportDetailModal({ report, onClose }: ReportDetailModal
     })
 
     doc.save(`Laporan_${report.reportCode}.pdf`)
+  }
+
+  // Function to download individual attachment
+  const downloadAttachment = (attachment: any) => {
+    const link = document.createElement("a")
+    link.href = `data:${attachment.type};base64,${attachment.data}`
+    link.download = attachment.name
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   return (
@@ -137,9 +161,6 @@ export default function ReportDetailModal({ report, onClose }: ReportDetailModal
               <Button onClick={downloadPDF} size="sm" className="flex items-center space-x-1">
                 <Download className="w-4 h-4" />
                 <span>{t("modal.downloadPDF")}</span>
-              </Button>
-              <Button onClick={onClose} size="sm" variant="ghost">
-                <X className="w-4 h-4" />
               </Button>
             </div>
           </div>
@@ -287,6 +308,41 @@ export default function ReportDetailModal({ report, onClose }: ReportDetailModal
                     </p>
                     <p className="text-sm">{report.contactInfo.phone}</p>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Attachments Section */}
+          {report.attachments && report.attachments.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-3" style={{ fontFamily: "Calibri, sans-serif" }}>
+                Lampiran Dokumen
+              </h3>
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <div className="space-y-2">
+                  {report.attachments.map((attachment, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                          <span className="text-xs font-semibold text-red-600">PDF</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{attachment.name}</p>
+                          <p className="text-xs text-gray-500">{attachment.type}</p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => downloadAttachment(attachment)}
+                        size="sm"
+                        variant="outline"
+                        className="flex items-center space-x-1"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span className="text-xs">Download</span>
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

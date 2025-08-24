@@ -26,16 +26,26 @@ export default function AdminLogin() {
 
     try {
       if (formData.email === "adminelnusa@elnusa.com" && formData.password === "adminadmin") {
-        // Store admin session in localStorage
         localStorage.setItem("adminLoggedIn", "true")
         localStorage.setItem("adminEmail", formData.email)
+        localStorage.setItem("adminRole", "admin")
 
         toast({
           title: "Login Berhasil",
           description: "Selamat datang di dashboard admin",
         })
 
-        // Trigger a page refresh or state update to show dashboard
+        window.location.reload()
+      } else if (formData.email === "pimpinan@elnusa.com" && formData.password === "pimpinanpimpinan") {
+        localStorage.setItem("adminLoggedIn", "true")
+        localStorage.setItem("adminEmail", formData.email)
+        localStorage.setItem("adminRole", "leadership")
+
+        toast({
+          title: "Login Berhasil",
+          description: "Selamat datang di dashboard pimpinan",
+        })
+
         window.location.reload()
       } else {
         throw new Error("Invalid credentials")
@@ -85,9 +95,11 @@ export default function AdminLogin() {
           <CardHeader className="bg-gradient-to-r from-blue-600/90 via-indigo-600/90 to-purple-600/90 text-white p-8 backdrop-blur-sm">
             <CardTitle className="text-center flex items-center justify-center space-x-3 text-xl">
               <UserCheck className="w-6 h-6" />
-              <span>{t("admin.login")}</span>
+              <span>Login Admin/Pimpinan</span>
             </CardTitle>
-            <p className="text-center text-blue-100 text-sm mt-2">Masuk dengan kredensial administrator</p>
+            <p className="text-center text-blue-100 text-sm mt-2">
+              Masuk dengan kredensial administrator atau pimpinan
+            </p>
           </CardHeader>
 
           <CardContent className="p-8 bg-white/95 backdrop-blur-sm">
@@ -102,7 +114,7 @@ export default function AdminLogin() {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="adminelnusa@elnusa.com"
+                    placeholder="Masukkan email admin"
                     required
                     className="h-12 pl-4 pr-4 border-2 border-gray-200 focus:border-blue-500 transition-colors rounded-xl"
                   />
@@ -141,25 +153,25 @@ export default function AdminLogin() {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    {t("admin.processing")}
+                    Memproses...
                   </>
                 ) : (
                   <>
                     <Lock className="w-5 h-5 mr-2" />
-                    {t("admin.loginButton")}
+                    Masuk
                   </>
                 )}
               </Button>
             </form>
 
-            <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-              <div className="flex items-center justify-center space-x-2 text-blue-800">
+            <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+              <div className="flex items-center justify-center space-x-2 text-green-800">
                 <Shield className="w-5 h-5" />
                 <span className="text-sm font-medium">Akses Terlindungi</span>
               </div>
-              <p className="text-xs text-blue-600 text-center mt-2 leading-relaxed">
-                Dashboard ini hanya dapat diakses oleh administrator yang berwenang. Semua aktivitas login dicatat untuk
-                keamanan sistem.
+              <p className="text-xs text-green-600 text-center mt-2 leading-relaxed">
+                Dashboard ini hanya dapat diakses oleh administrator dan pimpinan yang berwenang. Semua aktivitas login
+                dicatat untuk keamanan sistem.
               </p>
             </div>
           </CardContent>

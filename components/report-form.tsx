@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,6 +25,9 @@ import {
   User,
   Phone,
   AlertTriangle,
+  Upload,
+  X,
+  File,
 } from "lucide-react"
 
 interface FormData {
@@ -42,6 +47,7 @@ interface FormData {
     position: string
     department: string
     location: string
+    nip: string
   }
   violationType: string
   customViolationType: string
@@ -68,12 +74,15 @@ export default function ReportForm() {
   const [currentStep, setCurrentStep] = useState(1)
   const [reportCode, setReportCode] = useState("")
   const formSectionRef = useRef<HTMLDivElement>(null)
+  const [attachments, setAttachments] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const [formData, setFormData] = useState<FormData>({
     includePersonalInfo: false,
     personalInfo: { name: "", email: "", phone: "" },
     allowContact: false,
     contactInfo: { email: "", phone: "" },
-    violatorInfo: { name: "", position: "", department: "", location: "" },
+    violatorInfo: { name: "", position: "", department: "", location: "", nip: "" },
     violationType: "",
     customViolationType: "",
     place: "",
@@ -90,9 +99,56 @@ export default function ReportForm() {
     }
   }, [currentStep])
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (files) {
+      const validFiles = Array.from(files).filter((file) => {
+        const validTypes = ["application/pdf"]
+        const maxSize = 5 * 1024 * 1024
+
+        if (!validTypes.includes(file.type)) {
+          toast({
+            title: "Format File Tidak Didukung",
+            description: "Hanya file PDF yang diperbolehkan untuk mempercepat proses upload.",
+            variant: "destructive",
+          })
+          return false
+        }
+
+        if (file.size > maxSize) {
+          toast({
+            title: "File Terlalu Besar",
+            description: "Ukuran file maksimal 5MB untuk mempercepat upload.",
+            variant: "destructive",
+          })
+          return false
+        }
+
+        return true
+      })
+
+      setAttachments((prev) => [...prev, ...validFiles])
+    }
+  }
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes"
+    const k = 1024
+    const sizes = ["Bytes", "KB", "MB", "GB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+  }
+
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
+      console.log("[v0] Starting report submission...")
+      console.log("[v0] Attachments count:", attachments.length)
+
       const reportData: any = {
         includePersonalInfo: formData.includePersonalInfo,
         allowContact: formData.allowContact,
@@ -103,22 +159,27 @@ export default function ReportForm() {
         description: formData.description,
       }
 
-      // Only include personalInfo if user chose to include it
       if (formData.includePersonalInfo) {
         reportData.personalInfo = formData.personalInfo
       }
 
-      // Only include contactInfo if user allows contact and didn't provide personal info
       if (formData.allowContact && !formData.includePersonalInfo) {
         reportData.contactInfo = formData.contactInfo
       }
 
-      // Only include customViolationType if violation type is "Lainnya"
       if (formData.violationType === "Lainnya") {
         reportData.customViolationType = formData.customViolationType
       }
 
-      const result = await addReport(reportData)
+      console.log("[v0] Calling addReport with data:", reportData)
+      console.log(
+        "[v0] Attachments to upload:",
+        attachments.map((f) => ({ name: f.name, size: f.size, type: f.type })),
+      )
+
+      const result = await addReport(reportData, attachments.length > 0 ? attachments : undefined)
+
+      console.log("[v0] Report submitted successfully with code:", result)
 
       setReportCode(result)
       setIsSubmitted(true)
@@ -128,9 +189,11 @@ export default function ReportForm() {
         description: `Kode laporan Anda: ${result}. Simpan kode ini untuk referensi.`,
       })
     } catch (error) {
+      console.error("[v0] Error submitting report:", error)
       toast({
         title: "❌ Gagal Mengirim Laporan",
-        description: "Terjadi kesalahan saat mengirim laporan. Silakan coba lagi.",
+        description:
+          error instanceof Error ? error.message : "Terjadi kesalahan saat mengirim laporan. Silakan coba lagi.",
         variant: "destructive",
       })
     } finally {
@@ -144,21 +207,102 @@ export default function ReportForm() {
       personalInfo: { name: "", email: "", phone: "" },
       allowContact: false,
       contactInfo: { email: "", phone: "" },
-      violatorInfo: { name: "", position: "", department: "", location: "" },
+      violatorInfo: { name: "", position: "", department: "", location: "", nip: "" },
       violationType: "",
       customViolationType: "",
       place: "",
       time: "",
       description: "",
     })
+    setAttachments([])
     setCurrentStep(1)
     setIsSubmitted(false)
     setReportCode("")
   }
 
+  const validateStep1 = () => {
+    if (formData.includePersonalInfo) {
+      return (
+        formData.personalInfo.name.trim() !== "" &&
+        formData.personalInfo.email.trim() !== "" &&
+        formData.personalInfo.phone.trim() !== ""
+      )
+    }
+    return true
+  }
+
+  const validateStep2 = () => {
+    if (formData.allowContact) {
+      return formData.contactInfo.email.trim() !== "" || formData.contactInfo.phone.trim() !== ""
+    }
+    return true
+  }
+
+  const validateStep3 = () => {
+    return formData.violatorInfo.department.trim() !== "" && formData.violatorInfo.location.trim() !== ""
+  }
+
+  const validateStep4 = () => {
+    const hasViolationType = formData.violationType !== ""
+    const hasCustomType = formData.violationType !== "Lainnya" || formData.customViolationType.trim() !== ""
+    const hasPlace = formData.place.trim() !== ""
+    const hasTime = formData.time !== ""
+    const hasDescription = formData.description.trim() !== ""
+
+    return hasViolationType && hasCustomType && hasPlace && hasTime && hasDescription
+  }
+
   const nextStep = () => {
+    let canProceed = false
+
+    switch (currentStep) {
+      case 1:
+        canProceed = validateStep1()
+        if (!canProceed) {
+          toast({
+            title: "Lengkapi Data",
+            description: "Mohon lengkapi semua field yang diperlukan sebelum melanjutkan.",
+            variant: "destructive",
+          })
+          return
+        }
+        break
+      case 2:
+        canProceed = validateStep2()
+        if (!canProceed) {
+          toast({
+            title: "Lengkapi Kontak",
+            description: "Mohon isi minimal email atau nomor telepon jika memilih bisa dihubungi.",
+            variant: "destructive",
+          })
+          return
+        }
+        break
+      case 3:
+        canProceed = validateStep3()
+        if (!canProceed) {
+          toast({
+            title: "Lengkapi Informasi Pelanggar",
+            description: "Mohon isi minimal departemen dan lokasi kantor.",
+            variant: "destructive",
+          })
+          return
+        }
+        break
+      case 4:
+        canProceed = validateStep4()
+        if (!canProceed) {
+          toast({
+            title: "Lengkapi Detail Pelanggaran",
+            description: "Mohon lengkapi semua field: jenis pelanggaran, tempat, waktu, dan keterangan detail.",
+            variant: "destructive",
+          })
+          return
+        }
+        break
+    }
+
     if (currentStep === 1 && formData.includePersonalInfo) {
-      // Skip step 2 (contact permission) if personal info is provided
       setCurrentStep(3)
     } else {
       setCurrentStep(currentStep + 1)
@@ -167,7 +311,6 @@ export default function ReportForm() {
 
   const prevStep = () => {
     if (currentStep === 3 && formData.includePersonalInfo) {
-      // Go back to step 1 if we skipped step 2
       setCurrentStep(1)
     } else {
       setCurrentStep(currentStep - 1)
@@ -276,7 +419,6 @@ export default function ReportForm() {
           </CardHeader>
 
           <CardContent className="p-8">
-            {/* Step 1: Personal Information */}
             {currentStep === 1 && (
               <div className="space-y-8">
                 <div className="text-center">
@@ -391,7 +533,6 @@ export default function ReportForm() {
               </div>
             )}
 
-            {/* Step 2: Contact Permission - Only show if personal info is NOT provided */}
             {currentStep === 2 && !formData.includePersonalInfo && (
               <div className="space-y-8">
                 <div className="text-center">
@@ -492,7 +633,6 @@ export default function ReportForm() {
               </div>
             )}
 
-            {/* Step 3: Violator Information */}
             {currentStep === 3 && (
               <div className="space-y-8">
                 <div className="text-center">
@@ -519,6 +659,23 @@ export default function ReportForm() {
                           })
                         }
                         placeholder="Nama lengkap pelanggar"
+                        className="h-12"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="violator-nip" className="text-sm font-medium text-gray-700">
+                        NIP Pelanggar <span className="text-gray-400">(jika diketahui)</span>
+                      </Label>
+                      <Input
+                        id="violator-nip"
+                        value={formData.violatorInfo.nip}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            violatorInfo: { ...formData.violatorInfo, nip: e.target.value },
+                          })
+                        }
+                        placeholder="Nomor Induk Pegawai"
                         className="h-12"
                       />
                     </div>
@@ -556,7 +713,7 @@ export default function ReportForm() {
                         className="h-12"
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="violator-location" className="text-sm font-medium text-gray-700">
                         Lokasi Kantor
                       </Label>
@@ -590,7 +747,6 @@ export default function ReportForm() {
               </div>
             )}
 
-            {/* Step 4: Violation Details */}
             {currentStep === 4 && (
               <div className="space-y-8">
                 <div className="text-center">
@@ -657,9 +813,9 @@ export default function ReportForm() {
                       </Label>
                       <Input
                         id="time"
+                        type="datetime-local"
                         value={formData.time}
                         onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                        placeholder="Tanggal dan waktu kejadian"
                         className="h-12"
                       />
                     </div>
@@ -678,6 +834,66 @@ export default function ReportForm() {
                       className="resize-none"
                     />
                   </div>
+
+                  <div className="space-y-4">
+                    <Label className="text-sm font-medium text-gray-700">
+                      Lampiran Bukti <span className="text-gray-400">(opsional)</span>
+                    </Label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 transition-colors">
+                      <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                      <p className="text-gray-600 mb-2">Klik untuk upload atau drag & drop file</p>
+                      <p className="text-sm text-gray-500 mb-4">PDF saja (Maks. 5MB per file)</p>
+                      <p className="text-xs text-blue-600 mb-4">💡 Hanya PDF untuk mempercepat proses upload</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="bg-blue-50 hover:bg-blue-100 border-blue-200"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Pilih File
+                      </Button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        accept=".pdf"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </div>
+
+                    {attachments.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">File Terlampir:</Label>
+                        <div className="space-y-2">
+                          {attachments.map((file, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <File className="w-5 h-5 text-red-500" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-800">{file.name}</p>
+                                  <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeAttachment(index)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex justify-center space-x-4">
@@ -694,7 +910,6 @@ export default function ReportForm() {
               </div>
             )}
 
-            {/* Step 5: Confirmation */}
             {currentStep === 5 && (
               <div className="space-y-8">
                 <div className="text-center">
@@ -776,7 +991,7 @@ export default function ReportForm() {
                     {isSubmitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Mengirim Laporan...
+                        {attachments.length > 0 ? "Mengupload file & mengirim..." : "Mengirim Laporan..."}
                       </>
                     ) : (
                       <>

@@ -1,18 +1,12 @@
 "use client"
 
-import { ChevronDown } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
 
 export default function HeroSection() {
   const { t } = useLanguage()
 
-  const scrollToNext = () => {
-    const nextSection = document.getElementById("main-content")
-    nextSection?.scrollIntoView({ behavior: "smooth" })
-  }
-
   return (
-    <section className="relative w-full min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative w-full h-[60vh] min-h-[500px] flex items-center justify-center overflow-hidden">
       <div
         className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
         style={{
@@ -26,14 +20,8 @@ export default function HeroSection() {
 
       {/* Content */}
       <div className="relative z-20 text-center text-white px-4 max-w-4xl mx-auto">
-        <div className="inline-block bg-white bg-opacity-95 backdrop-blur-md rounded-full px-8 py-4 mb-12 shadow-2xl border border-white border-opacity-20">
-          <span className="text-base font-bold text-gray-900" style={{ fontFamily: "Calibri, sans-serif" }}>
-            {t("hero.commitment")}
-          </span>
-        </div>
-
         <h1
-          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight"
+          className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight"
           style={{
             fontFamily: "Calibri, sans-serif",
             textShadow: "2px 2px 8px rgba(0,0,0,0.8), 0 0 20px rgba(0,0,0,0.5)",
@@ -41,15 +29,17 @@ export default function HeroSection() {
         >
           {t("hero.title")}
         </h1>
-      </div>
 
-      <button
-        onClick={scrollToNext}
-        className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-white bg-opacity-95 backdrop-blur-md rounded-full p-5 hover:bg-opacity-100 hover:scale-110 transition-all duration-300 shadow-2xl group border border-white border-opacity-20 z-20"
-        aria-label="Scroll to next section"
-      >
-        <ChevronDown className="w-7 h-7 text-gray-900 animate-bounce group-hover:animate-pulse" />
-      </button>
+        <nav className="flex items-center justify-center space-x-2 text-sm text-white text-opacity-90">
+          <span className="hover:text-white cursor-pointer transition-colors">Beranda</span>
+          <span className="text-white text-opacity-60">{">"}</span>
+          <span className="hover:text-white cursor-pointer transition-colors">Komitmen Kami</span>
+          <span className="text-white text-opacity-60">{">"}</span>
+          <span className="hover:text-white cursor-pointer transition-colors">Tata Kelola Perusahaan</span>
+          <span className="text-white text-opacity-60">{">"}</span>
+          <span className="text-yellow-300 font-medium">Mekanisme Pengaduan</span>
+        </nav>
+      </div>
     </section>
   )
 }
