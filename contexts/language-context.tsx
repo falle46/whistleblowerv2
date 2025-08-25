@@ -81,7 +81,7 @@ const translations = {
     "reportForm.phone": "Nomor Telepon",
     "reportForm.contactPermission": "Izin Kontak",
     "reportForm.contactQuestion": "Apakah kami dapat menghubungi Anda?",
-    "reportForm.yesContact": "Ya, boleh dihubungi",
+    "reportForm.yesContact": "Ya, Saya boleh dihubungi",
     "reportForm.noContact": "Tidak, jangan hubungi saya",
     "reportForm.contactEmail": "Email untuk Dihubungi",
     "reportForm.contactPhone": "Nomor HP/WhatsApp",
