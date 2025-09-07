@@ -111,7 +111,7 @@ const translations = {
     // Report Info
     "reportInfo.title": "INDEPENDENT WHISTLEBLOWER SYSTEM CENTER",
     "reportInfo.question":
-      "Apakah anda MENGETAHUI, MELIHAT atau MENCURIGAI sesuatu yang tidak benar terjadi di lingkungan kerja ELNUSA ??",
+      "Apakah anda MENGETAHUI, MELIHAT atau MENCURIGAI sesuatu yang tidak benar terjadi di lingkungan kerja ELNUSA ???",
     "reportInfo.security": "Keamanan Terjamin",
     "reportInfo.securityDesc": "Data Anda dilindungi dengan enkripsi tingkat tinggi",
     "reportInfo.anonymous": "Identitas Anonim",
