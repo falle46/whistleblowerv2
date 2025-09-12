@@ -41,7 +41,7 @@ Langkah-langkah untuk menjalankan proyek ini di lingkungan development lokal.
 #### A. Clone Repository
 Clone repository dari Git internal perusahaan.
 ```bash
-git clone [URL_GIT_REPOSITORY_INTERNAL]
+git clone https://github.com/falle46/whistleblowerv2
 cd whistleblower-system
 ```
 
@@ -129,7 +129,7 @@ Follow these steps to run the project in a local development environment.
 #### A. Clone the Repository
 Clone the repository from the company's internal Git server.
 ```bash
-git clone [INTERNAL_GIT_REPOSITORY_URL]
+git clone https://github.com/falle46/whistleblowerv2
 cd whistleblower-system
 ```
 
