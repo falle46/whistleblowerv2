@@ -11,7 +11,7 @@ const cardData = [
     id: 1,
     icon: Book,
     titleKey: "card.regulation",
-    content: "Informasi lengkap mengenai regulasi dan sistem pelaporan pelanggaran yang berlaku di PT Elnusa Tbk.",
+    content: "Sistem pelaporan pelanggaran/Whistleblowing System (WBS) Perseroan adalah sistem yang mengelola pengaduan atas pelanggaran dan atau penyimpangan kode etik, hukum, standar prosedur, kebijakan manajemen serta aturan lainnya yang dipandang perlu, dimana dapat merugikan dan/atau membahayakan Perseroan seperti kerugian ﬁnansial, lingkungan, kondisi kerja, reputasi organisasi, pemangku kepentingan dan lainnya. Informasi yang diperoleh dari WBS akan ditindaklanjuti baik dengan pengenaan sanksi yang tegas dan konsisten agar dapat menimbulkan efek jera bagi pelaku pelanggaran maupun bagi mereka yang berniat melakukan hal sama dan dapat menjadi masukan untuk perbaikan sistem bagi Perusahaan kedepannya.",
   },
   {
     id: 2,

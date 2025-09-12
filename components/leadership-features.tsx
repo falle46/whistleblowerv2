@@ -14,6 +14,7 @@ import { Timestamp } from "firebase/firestore"
 import {
   getEmployees,
   approveEmployee,
+  deleteEmployee,
   addSanction,
   getSanctions,
   type Employee,
@@ -32,6 +33,7 @@ import {
   Loader2,
   UserCheck,
   Ban,
+  X,
 } from "lucide-react"
 
 interface LeadershipFeaturesProps {
@@ -56,6 +58,11 @@ export default function LeadershipFeatures({ reports, onReportUpdate }: Leadersh
   const [selectedReport, setSelectedReport] = useState<ReportData | null>(null)
   const [isSanctionDialogOpen, setIsSanctionDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // State for reject confirmation dialog
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [isRejecting, setIsRejecting] = useState(false)
 
   const [sanctionForm, setSanctionForm] = useState({
     sanctionType: "",
@@ -97,6 +104,39 @@ export default function LeadershipFeatures({ reports, onReportUpdate }: Leadersh
         description: "Gagal menyetujui pegawai",
         variant: "destructive",
       })
+    }
+  }
+
+  const handleOpenRejectDialog = (employee: Employee) => {
+    setSelectedEmployee(employee)
+    setIsRejectDialogOpen(true)
+  }
+
+  const handleCloseRejectDialog = () => {
+    setIsRejectDialogOpen(false)
+    setSelectedEmployee(null)
+  }
+
+  const handleRejectEmployee = async () => {
+    if (!selectedEmployee?.id) return
+
+    setIsRejecting(true)
+    try {
+      await deleteEmployee(selectedEmployee.id)
+      toast({
+        title: "Berhasil",
+        description: `Pegawai ${selectedEmployee.name} berhasil ditolak dan dihapus dari sistem`,
+      })
+      handleCloseRejectDialog()
+      loadData()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal menolak pegawai",
+        variant: "destructive",
+      })
+    } finally {
+      setIsRejecting(false)
     }
   }
 
@@ -285,13 +325,23 @@ export default function LeadershipFeatures({ reports, onReportUpdate }: Leadersh
                         </p>
                       </div>
                     </div>
-                    <Button
-                      onClick={() => handleApproveEmployee(employee.id!)}
-                      className="bg-green-600 hover:bg-green-700 flex items-center space-x-2"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Setujui</span>
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        onClick={() => handleOpenRejectDialog(employee)}
+                        variant="destructive"
+                        className="flex items-center space-x-2"
+                      >
+                        <X className="w-4 h-4" />
+                        <span>Tolak</span>
+                      </Button>
+                      <Button
+                        onClick={() => handleApproveEmployee(employee.id!)}
+                        className="bg-green-600 hover:bg-green-700 flex items-center space-x-2"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        <span>Setujui</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -299,6 +349,66 @@ export default function LeadershipFeatures({ reports, onReportUpdate }: Leadersh
           )}
         </CardContent>
       </Card>
+
+      {/* Reject Employee Confirmation Dialog */}
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <span>Konfirmasi Penolakan</span>
+            </DialogTitle>
+          </DialogHeader>
+          {selectedEmployee && (
+            <div className="space-y-4">
+              <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-sm text-red-800 mb-2">
+                  <strong>Apakah Anda yakin ingin menolak pegawai berikut?</strong>
+                </p>
+                <div className="space-y-1 text-sm">
+                  <p><strong>Nama:</strong> {selectedEmployee.name}</p>
+                  <p><strong>NIP:</strong> {selectedEmployee.nip}</p>
+                  <p><strong>Divisi:</strong> {selectedEmployee.division}</p>
+                </div>
+              </div>
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-sm text-yellow-800">
+                  <strong>Perhatian:</strong> Data pegawai akan dihapus permanen dari sistem dan tidak dapat dikembalikan.
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleCloseRejectDialog}
+                  disabled={isRejecting}
+                >
+                  Batal
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleRejectEmployee}
+                  disabled={isRejecting}
+                  className="flex items-center space-x-2"
+                >
+                  {isRejecting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Menolak...</span>
+                    </>
+                  ) : (
+                    <>
+                      <X className="w-4 h-4" />
+                      <span>Ya, Tolak</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Report Sanctions */}
       <Card>
