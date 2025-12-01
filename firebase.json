@@ -23,7 +23,7 @@
     }
   ],
   "hosting": {
-    "public": "maintenance-page",
+    "public": "out",
     "ignore": [
       "firebase.json",
       "**/.*",

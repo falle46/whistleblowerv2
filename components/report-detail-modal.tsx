@@ -3,18 +3,54 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Download } from "lucide-react"
-import type { ReportData } from "@/lib/firebase-utils"
+import { Download, AlertTriangle, CheckCircle, Clock } from "lucide-react"
+import type { ReportData, Sanction } from "@/lib/firebase-utils"
 import { useLanguage } from "@/contexts/language-context"
 import jsPDF from "jspdf"
 
 interface ReportDetailModalProps {
   report: ReportData
+  sanction?: Sanction | null // Menerima prop sanksi (opsional)
   onClose: () => void
 }
 
-export default function ReportDetailModal({ report, onClose }: ReportDetailModalProps) {
+export default function ReportDetailModal({ report, sanction, onClose }: ReportDetailModalProps) {
   const { t } = useLanguage()
+
+  // --- Logic Status Tindak Lanjut ---
+  const getStatusInfo = () => {
+    if (!sanction) {
+        return {
+            label: "Belum Ditindaklanjuti",
+            color: "bg-gray-100 text-gray-600 border-gray-200",
+            icon: <AlertTriangle className="w-4 h-4 mr-2" />,
+            desc: "Laporan ini belum mendapatkan tindakan atau sanksi dari pimpinan."
+        };
+    }
+
+    const now = new Date();
+    const endDate = sanction.endDate.toDate();
+
+    if (now > endDate) {
+        return {
+            label: "Selesai Ditindaklanjuti",
+            color: "bg-green-100 text-green-700 border-green-200",
+            icon: <CheckCircle className="w-4 h-4 mr-2" />,
+            desc: `Kasus ini telah selesai ditangani. Sanksi ${sanction.sanctionType} telah berakhir pada ${endDate.toLocaleDateString("id-ID")}.`,
+            detail: sanction.description
+        };
+    } else {
+        return {
+            label: "Sedang Ditindaklanjuti",
+            color: "bg-blue-100 text-blue-700 border-blue-200",
+            icon: <Clock className="w-4 h-4 mr-2" />,
+            desc: `Kasus ini sedang dalam masa penindakan. Sanksi: ${sanction.sanctionType} selama ${sanction.duration} hari.`,
+            detail: `Berakhir pada: ${endDate.toLocaleDateString("id-ID")}`
+        };
+    }
+  }
+
+  const status = getStatusInfo();
 
   const downloadPDF = () => {
     const doc = new jsPDF()
@@ -98,6 +134,23 @@ export default function ReportDetailModal({ report, onClose }: ReportDetailModal
     const splitDescription = doc.splitTextToSize(report.description, pageWidth - 2 * margin)
     doc.text(splitDescription, margin, yPosition)
     yPosition += splitDescription.length * 5 + 15
+
+    // Status Section in PDF
+    doc.setFont("helvetica", "bold")
+    doc.text("STATUS TINDAK LANJUT", margin, yPosition)
+    yPosition += 10
+    doc.setFont("helvetica", "normal")
+    doc.text(`Status: ${status.label}`, margin, yPosition)
+    yPosition += 8
+    if(sanction) {
+        doc.text(`Keterangan: ${status.desc}`, margin, yPosition)
+        yPosition += 8
+        if(status.detail) {
+             doc.text(`Detail: ${status.detail}`, margin, yPosition)
+             yPosition += 8
+        }
+    }
+    yPosition += 10
 
     // Reporter Info (if available)
     if (report.includePersonalInfo && report.personalInfo) {
@@ -184,6 +237,24 @@ export default function ReportDetailModal({ report, onClose }: ReportDetailModal
               })}
             </p>
           </div>
+        
+        {/* --- REVISI: BAGIAN STATUS TINDAK LANJUT --- */}
+        <div>
+            <h3 className="text-lg font-semibold mb-3" style={{ fontFamily: "Calibri, sans-serif" }}>
+              Status Tindak Lanjut
+            </h3>
+            <div className={`p-4 rounded-lg border ${status.color}`}>
+                <div className="flex items-center mb-2">
+                    {status.icon}
+                    <span className="font-bold text-base uppercase">{status.label}</span>
+                </div>
+                <p className="text-sm">{status.desc}</p>
+                {status.detail && (
+                    <p className="text-sm mt-1 font-medium">{status.detail}</p>
+                )}
+            </div>
+        </div>
+        {/* ------------------------------------------- */}
 
           {/* Violation Details */}
           <div>

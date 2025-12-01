@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +23,7 @@ import {
   CheckCircle,
   Clock,
   Loader2,
+  Eye,
 } from "lucide-react"
 
 const divisions = [
@@ -39,7 +39,12 @@ const divisions = [
   "Procurement",
 ]
 
-export default function EmployeeManagement() {
+// Menambahkan interface props untuk menerima userRole
+interface EmployeeManagementProps {
+  userRole?: "admin" | "pimpinan" | string;
+}
+
+export default function EmployeeManagement({ userRole = "admin" }: EmployeeManagementProps) {
   const { toast } = useToast()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([])
@@ -56,6 +61,9 @@ export default function EmployeeManagement() {
     birthDate: "",
     division: "",
   })
+
+  // Cek apakah user adalah pimpinan (untuk mempersingkat logic di return)
+  const isPimpinan = userRole === "pimpinan";
 
   useEffect(() => {
     loadEmployees()
@@ -118,10 +126,7 @@ export default function EmployeeManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    console.log("[v0] Form submitted with data:", formData)
-
     if (!formData.name || !formData.nip || !formData.birthDate || !formData.division) {
-      console.log("[v0] Validation failed - missing fields")
       toast({
         title: "Error",
         description: "Semua field harus diisi",
@@ -133,18 +138,14 @@ export default function EmployeeManagement() {
     setLoading(true)
 
     try {
-      console.log("[v0] Attempting to save employee...")
-
       if (editingEmployee) {
         await updateEmployee(editingEmployee.id!, formData)
-        console.log("[v0] Employee updated successfully")
         toast({
           title: "Berhasil",
           description: "Data pegawai berhasil diperbarui",
         })
       } else {
         await addEmployee(formData)
-        console.log("[v0] Employee added successfully")
         toast({
           title: "Berhasil",
           description: "Pegawai baru berhasil ditambahkan",
@@ -251,90 +252,95 @@ export default function EmployeeManagement() {
               <Users className="w-5 h-5" />
               <span>Manajemen Pegawai</span>
             </CardTitle>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={resetForm} className="flex items-center space-x-2">
-                  <Plus className="w-4 h-4" />
-                  <span>Tambah Pegawai</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>{editingEmployee ? "Edit Pegawai" : "Tambah Pegawai Baru"}</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">Nama Lengkap</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Masukkan nama lengkap"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="nip">NIP</Label>
-                    <Input
-                      id="nip"
-                      value={formData.nip}
-                      onChange={(e) => setFormData({ ...formData, nip: e.target.value })}
-                      placeholder="Nomor Induk Pegawai"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="birthDate">Tanggal Lahir</Label>
-                    <Input
-                      id="birthDate"
-                      type="date"
-                      value={formData.birthDate}
-                      onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="division">Divisi</Label>
-                    <Select
-                      value={formData.division}
-                      onValueChange={(value) => setFormData({ ...formData, division: value })}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih divisi" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {divisions.map((division) => (
-                          <SelectItem key={division} value={division}>
-                            {division}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex justify-end space-x-2 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                      Batal
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={loading || !formData.name || !formData.nip || !formData.birthDate || !formData.division}
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                          {editingEmployee ? "Memperbarui..." : "Menambahkan..."}
-                        </>
-                      ) : editingEmployee ? (
-                        "Perbarui"
-                      ) : (
-                        "Tambah"
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+
+            {/* REVISI: Tombol Tambah hanya muncul jika BUKAN pimpinan */}
+            {!isPimpinan && (
+              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={resetForm} className="flex items-center space-x-2">
+                    <Plus className="w-4 h-4" />
+                    <span>Tambah Pegawai</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>{editingEmployee ? "Edit Pegawai" : "Tambah Pegawai Baru"}</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <Label htmlFor="name">Nama Lengkap</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="Masukkan nama lengkap"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="nip">NIP</Label>
+                      <Input
+                        id="nip"
+                        value={formData.nip}
+                        onChange={(e) => setFormData({ ...formData, nip: e.target.value })}
+                        placeholder="Nomor Induk Pegawai"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="birthDate">Tanggal Lahir</Label>
+                      <Input
+                        id="birthDate"
+                        type="date"
+                        value={formData.birthDate}
+                        onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="division">Divisi</Label>
+                      <Select
+                        value={formData.division}
+                        onValueChange={(value) => setFormData({ ...formData, division: value })}
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih divisi" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {divisions.map((division) => (
+                            <SelectItem key={division} value={division}>
+                              {division}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex justify-end space-x-2 pt-4">
+                      <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                        Batal
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={loading || !formData.name || !formData.nip || !formData.birthDate || !formData.division}
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            {editingEmployee ? "Memperbarui..." : "Menambahkan..."}
+                          </>
+                        ) : editingEmployee ? (
+                          "Perbarui"
+                        ) : (
+                          "Tambah"
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
+            
           </div>
         </CardHeader>
         <CardContent>
@@ -427,26 +433,38 @@ export default function EmployeeManagement() {
                         })}
                       </p>
                     </div>
+                    
+                    {/* REVISI: Tombol Aksi - Disembunyikan untuk Pimpinan */}
                     <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(employee)}
-                        className="flex items-center space-x-1"
-                      >
-                        <Edit className="w-4 h-4" />
-                        <span>Edit</span>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDelete(employee.id!)}
-                        className="flex items-center space-x-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span>Hapus</span>
-                      </Button>
+                      {!isPimpinan ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEdit(employee)}
+                            className="flex items-center space-x-1"
+                          >
+                            <Edit className="w-4 h-4" />
+                            <span>Edit</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDelete(employee.id!)}
+                            className="flex items-center space-x-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span>Hapus</span>
+                          </Button>
+                        </>
+                      ) : (
+                        <div className="flex items-center text-gray-400 bg-gray-50 px-3 py-1 rounded-full text-xs border">
+                           <Eye className="w-3 h-3 mr-1"/>
+                           View Only
+                        </div>
+                      )}
                     </div>
+
                   </div>
                 </div>
               ))}

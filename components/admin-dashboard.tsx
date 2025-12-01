@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getReports, markReportAsRead, type ReportData } from "@/lib/firebase-utils"
+import { getReports, markReportAsRead, getSanctions, type ReportData, type Sanction } from "@/lib/firebase-utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +23,9 @@ import {
   X,
   Users,
   Crown,
+  Gavel,
+  AlertTriangle, // Icon Tambahan
+  Activity,      // Icon Tambahan
 } from "lucide-react"
 import ReportDetailModal from "@/components/report-detail-modal"
 import EmployeeManagement from "@/components/employee-management"
@@ -41,11 +44,18 @@ const violationTypes = [
 export default function AdminDashboard() {
   const { toast } = useToast()
   const { t } = useLanguage()
+  
+  // Data States
   const [reports, setReports] = useState<ReportData[]>([])
+  const [sanctions, setSanctions] = useState<Sanction[]>([])
   const [filteredReports, setFilteredReports] = useState<ReportData[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // Modal States
   const [selectedReport, setSelectedReport] = useState<ReportData | null>(null)
+  const [selectedReportSanction, setSelectedReportSanction] = useState<Sanction | null>(null)
 
+  // Filter States
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedViolationType, setSelectedViolationType] = useState<string>("all")
   const [dateFrom, setDateFrom] = useState("")
@@ -56,21 +66,22 @@ export default function AdminDashboard() {
   const isLeadership = userRole === "leadership"
 
   useEffect(() => {
-    loadReports()
+    loadData()
   }, [])
 
   useEffect(() => {
     filterReports()
   }, [reports, searchTerm, selectedViolationType, dateFrom, dateTo, statusFilter])
 
-  const loadReports = async () => {
+  const loadData = async () => {
     try {
-      const reportsData = await getReports()
+      const [reportsData, sanctionsData] = await Promise.all([getReports(), getSanctions()])
       setReports(reportsData)
+      setSanctions(sanctionsData)
     } catch (error) {
       toast({
         title: "Error",
-        description: "Gagal memuat data laporan",
+        description: "Gagal memuat data",
         variant: "destructive",
       })
     } finally {
@@ -81,7 +92,6 @@ export default function AdminDashboard() {
   const filterReports = () => {
     let filtered = [...reports]
 
-    // Search filter
     if (searchTerm) {
       filtered = filtered.filter(
         (report) =>
@@ -93,12 +103,10 @@ export default function AdminDashboard() {
       )
     }
 
-    // Violation type filter
     if (selectedViolationType !== "all") {
       filtered = filtered.filter((report) => report.violationType === selectedViolationType)
     }
 
-    // Date range filter
     if (dateFrom) {
       const fromDate = new Date(dateFrom)
       filtered = filtered.filter((report) => {
@@ -109,14 +117,13 @@ export default function AdminDashboard() {
 
     if (dateTo) {
       const toDate = new Date(dateTo)
-      toDate.setHours(23, 59, 59, 999) // End of day
+      toDate.setHours(23, 59, 59, 999)
       filtered = filtered.filter((report) => {
         const reportDate = report.createdAt?.toDate()
         return reportDate && reportDate <= toDate
       })
     }
 
-    // Status filter
     if (statusFilter !== "all") {
       filtered = filtered.filter((report) => (statusFilter === "read" ? report.isRead : !report.isRead))
     }
@@ -153,10 +160,12 @@ export default function AdminDashboard() {
 
   const handleViewReport = async (report: ReportData) => {
     setSelectedReport(report)
+    const relatedSanction = sanctions.find(s => s.reportId === report.id) || null;
+    setSelectedReportSanction(relatedSanction);
+
     if (!report.isRead && report.id) {
       try {
         await markReportAsRead(report.id)
-        // Update local state
         setReports((prev) => prev.map((r) => (r.id === report.id ? { ...r, isRead: true } : r)))
       } catch (error) {
         console.error("Error marking report as read:", error)
@@ -176,6 +185,49 @@ export default function AdminDashboard() {
     }
     return colors[type] || "bg-gray-100 text-gray-800"
   }
+
+  // --- FUNGSI BARU: Render Status Tindak Lanjut ---
+  const renderFollowUpStatus = (reportId: string | undefined) => {
+    if (!reportId) return null;
+    
+    const sanction = sanctions.find(s => s.reportId === reportId);
+    
+    // 1. Belum Ditindaklanjuti
+    if (!sanction) {
+        return (
+            <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-200 flex items-center space-x-1">
+                <AlertTriangle className="w-3 h-3" />
+                <span>Belum Ditindaklanjuti</span>
+            </Badge>
+        );
+    }
+
+    const now = new Date();
+    const endDate = sanction.endDate.toDate();
+
+    // 2. Selesai Ditindaklanjuti (Waktu Sanksi Berakhir)
+    if (now > endDate) {
+        return (
+            <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 flex items-center space-x-1">
+                <CheckCircle className="w-3 h-3" />
+                <span>Selesai Ditindaklanjuti</span>
+            </Badge>
+        );
+    } else {
+    // 3. Sedang Ditindaklanjuti (Masih dalam masa sanksi)
+        return (
+            <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 flex items-center space-x-1">
+                <Activity className="w-3 h-3" />
+                <span>Sedang Ditindaklanjuti</span>
+            </Badge>
+        );
+    }
+  }
+
+  const completedCasesCount = sanctions.filter(s => {
+      const now = new Date();
+      return s.endDate.toDate() < now;
+  }).length;
 
   if (loading) {
     return (
@@ -230,7 +282,7 @@ export default function AdminDashboard() {
           </TabsList>
 
           <TabsContent value="reports" className="space-y-6">
-            {/* Stats */}
+            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Card>
                 <CardContent className="p-6">
@@ -268,10 +320,10 @@ export default function AdminDashboard() {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <Filter className="w-8 h-8 text-purple-600" />
+                    <Gavel className="w-8 h-8 text-purple-600" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Hasil Filter</p>
-                      <p className="text-2xl font-bold text-gray-900">{filteredReports.length}</p>
+                      <p className="text-sm font-medium text-gray-600">Selesai</p>
+                      <p className="text-2xl font-bold text-gray-900">{completedCasesCount}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -391,13 +443,18 @@ export default function AdminDashboard() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
+                            <div className="flex items-center flex-wrap gap-2 mb-2">
+                              {/* Badge Jenis Pelanggaran */}
                               <Badge className={getViolationTypeColor(report.violationType)}>
                                 {report.violationType}
                               </Badge>
+                              
+                              {/* Badge Kode Laporan */}
                               <Badge variant="outline" className="font-mono text-xs">
                                 {report.reportCode}
                               </Badge>
+
+                              {/* Badge Status Baca */}
                               {report.isRead ? (
                                 <Badge variant="secondary" className="flex items-center space-x-1">
                                   <CheckCircle className="w-3 h-3" />
@@ -409,6 +466,10 @@ export default function AdminDashboard() {
                                   <span>Belum Dibaca</span>
                                 </Badge>
                               )}
+
+                              {/* --- BADGE BARU: Status Tindak Lanjut --- */}
+                              {renderFollowUpStatus(report.id)}
+
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
                               <p>
@@ -459,19 +520,25 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="employees">
-            <EmployeeManagement />
+            <EmployeeManagement userRole={isLeadership ? "pimpinan" : "admin"} />
           </TabsContent>
 
           {isLeadership && (
             <TabsContent value="leadership">
-              <LeadershipFeatures reports={reports} onReportUpdate={loadReports} />
+              <LeadershipFeatures reports={reports} onReportUpdate={loadData} />
             </TabsContent>
           )}
         </Tabs>
       </main>
 
-      {/* Report Detail Modal */}
-      {selectedReport && <ReportDetailModal report={selectedReport} onClose={() => setSelectedReport(null)} />}
+      {/* Report Detail Modal with Sanction Info */}
+      {selectedReport && (
+        <ReportDetailModal 
+            report={selectedReport} 
+            sanction={selectedReportSanction} 
+            onClose={() => setSelectedReport(null)} 
+        />
+      )}
     </div>
   )
 }
